@@ -42,6 +42,8 @@ DEPENDENCIES = [
     "@crate_index//:strum",
     "@crate_index//:tempfile",
     "@crate_index//:uuid",
+    "@crate_index//:im",
+    "@crate_index//:rpds",
 ]
 
 MACRO_DEPENDENCIES = [

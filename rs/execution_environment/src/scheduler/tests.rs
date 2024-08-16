@@ -5832,3 +5832,52 @@ fn scheduled_heap_delta_limit_scaling() {
     assert_eq!(10, scheduled_limit(50, 50, 9, 10, 5));
     assert_eq!(10, scheduled_limit(55, 50, 9, 10, 5));
 }
+
+#[test]
+fn large_heap_write_test() {
+    let env = StateMachineBuilder::new()
+        .with_subnet_type(SubnetType::Application)
+        .build();
+
+    // Load wasm benchmark binary from a file.
+    //let features = [];
+    let wasm_benchmark_binary = include_bytes!("/home/alexuta/heap/write_heap.wasm").to_vec();
+
+    let initial_cycles = 10_000_000_000_000_u128;
+    let benchmark_canister_id = env
+        .install_canister_with_cycles(
+            wasm_benchmark_binary,
+            vec![],
+            None,
+            Cycles::from(initial_cycles),
+        )
+        .unwrap();
+
+    // get and print cycles before balance
+    let cycle_balance_before = env.cycle_balance(benchmark_canister_id);
+    println!("cycle balance before: {}", cycle_balance_before);
+
+    let t0 = std::time::Instant::now();
+
+    // call the write_mem method on the benchmark canister.
+    let payload = r#"null"#.as_bytes().to_vec();
+    let _result = env.execute_ingress(benchmark_canister_id, "test", payload.clone());
+
+    let t1 = std::time::Instant::now();
+    println!(
+        "canister execution time = {}",
+        t1.duration_since(t0).as_millis()
+    );
+
+    let _result = env.execute_ingress(benchmark_canister_id, "test2", payload.clone());
+
+    // get and print cycles after balance
+    let cycle_balance_after = env.cycle_balance(benchmark_canister_id);
+    println!("cycle balance after: {}", cycle_balance_after);
+
+    // difference in cycles is
+    println!(
+        "cycle balance difference: {}",
+        cycle_balance_before - cycle_balance_after
+    );
+}

@@ -96,3 +96,43 @@ fn test_max_key_range() {
         assert_eq!(m.max_key(), Some(i));
     }
 }
+
+#[test]
+fn test_million_inserts() {
+    let now = std::time::Instant::now();
+    let hm: im::HashMap<u64, u64> = (0..1_000_000u64).map(|x| (x, x + 100)).collect();
+
+    println!("Time taken im::HashMap: {:?}", now.elapsed());
+
+    let now = std::time::Instant::now();
+    let rpds_hm: rpds::HashTrieMap<u64, u64> = (0..1_000_000u64).map(|x| (x, x + 100)).collect();
+
+    println!("Time taken rpds::HashTrieMap: {:?}", now.elapsed());
+
+    let now = std::time::Instant::now();
+    let m: IntMap<u64> = (0..1_000_000u64).map(|x| (x, x + 100)).collect();
+
+    println!("Time taken IntMap: {:?}", now.elapsed());
+    println!("Size: {}", m.len());
+
+    let now = std::time::Instant::now();
+    let _rb: rpds::RedBlackTreeMap<u64, u64> = (0..1_000_000u64).map(|x| (x, x + 100)).collect();
+
+    println!("Time taken rpds::RedBlackTreeMap: {:?}", now.elapsed());
+
+    let now = std::time::Instant::now();
+    let mut arr: im::Vector<u64> = im::Vector::new();
+    (0..1_000_000u64).for_each(|x| {
+        arr.push_back(x + 100);
+    });
+
+    let mut new_arr = arr.clone();
+    (0..1_000_000u64).for_each(|x| {
+        new_arr.push_back(x + 1000);
+    });
+    println!("Time taken im::Vector: {:?}", now.elapsed());
+
+    assert_eq!(m.len(), hm.len());
+    assert_eq!(m.len(), rpds_hm.size());
+    assert_eq!(arr.len(), new_arr.len() / 2);
+}

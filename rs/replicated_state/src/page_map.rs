@@ -24,7 +24,7 @@ pub use storage::{
 use storage::{OverlayFile, OverlayVersion, Storage};
 
 use ic_types::{Height, NumOsPages, MAX_STABLE_MEMORY_IN_BYTES};
-use int_map::{Bounds, IntMap};
+use int_map::Bounds;
 use libc::off_t;
 use page_allocator::Page;
 use prometheus::{Histogram, HistogramVec, IntCounter, IntCounterVec};
@@ -159,13 +159,16 @@ impl<'a> WriteBuffer<'a> {
     }
 }
 
-/// `PageDelta` represents a changeset of the module heap.
+/// `PageDelta` represents a changeset of the module heap or stable memory.
 ///
 /// NOTE: We use a persistent map to make snapshotting of a PageMap a cheap
 /// operation. This allows us to simplify canister state management: we can
 /// simply have a copy of the whole PageMap in every canister snapshot.
+/// We replace the IntMap with a immutable vector of pages for performance reasons.
+/// The vector is sorted by page index.
+/// //pub(crate) struct PageDelta(IntMap<Page>);
 #[derive(Clone, Default, Debug)]
-pub(crate) struct PageDelta(IntMap<Page>);
+pub(crate) struct PageDelta(im::Vector<(PageIndex, Page)>);
 
 impl PageDelta {
     /// Gets content of the page at the specified index.
@@ -174,46 +177,141 @@ impl PageDelta {
     /// allocating pages in this `PageDelta`. It serves as a witness that
     /// the contents of the page is still valid.
     fn get_page(&self, page_index: PageIndex) -> Option<&PageBytes> {
-        self.0.get(page_index.get()).map(|p| p.contents())
+        //self.0.get(page_index.get()).map(|p| p.contents())
+        //println!("get_page");
+        match self.0.binary_search_by(|(idx, _)| idx.cmp(&page_index)) {
+            Ok(idx) => Some(self.0[idx].1.contents()),
+            Err(_) => None,
+        }
     }
 
     /// Returns a reference to the page at the specified index.
     fn get_page_ref(&self, page_index: PageIndex) -> Option<&Page> {
-        self.0.get(page_index.get())
+        // self.0.get(page_index.get())
+        //println!("get_page_ref");
+        match self.0.binary_search_by(|(idx, _)| idx.cmp(&page_index)) {
+            Ok(idx) => Some(&self.0[idx].1),
+            Err(_) => None,
+        }
     }
 
     /// Returns (lower, upper), where:
     /// - lower is the largest index/page smaller or equal to the given page index.
     /// - upper is the smallest index/page larger or equal to the given page index.
     fn bounds(&self, page_index: PageIndex) -> Bounds<PageIndex, Page> {
-        let (lower, upper) = self.0.bounds(page_index.get());
-        let map_index = |(k, v)| (PageIndex::new(k), v);
-        (lower.map(map_index), upper.map(map_index))
+        // let (lower, upper) = self.0.bounds(page_index.get());
+        // let map_index = |(k, v)| (PageIndex::new(k), v);
+        // (lower.map(map_index), upper.map(map_index))
+        //println!("bounds");
+        match self.0.binary_search_by(|(idx, _)| idx.cmp(&page_index)) {
+            Ok(idx) => {
+                let (page_index, page) = &self.0[idx];
+                (Some((*page_index, page)), Some((*page_index, page)))
+            }
+            Err(idx) => {
+                if idx == 0 {
+                    (None, self.0.front().map(|(idx, page)| (*idx, page)))
+                } else if idx == self.0.len() {
+                    (self.0.back().map(|(idx, page)| (*idx, page)), None)
+                } else {
+                    (
+                        self.0.get(idx - 1).map(|(idx, page)| (*idx, page)),
+                        self.0.get(idx).map(|(idx, page)| (*idx, page)),
+                    )
+                }
+            }
+        }
     }
 
     /// Modifies this delta in-place by applying all the entries in `rhs` to it.
     fn update(&mut self, rhs: PageDelta) {
-        self.0 = rhs.0.union(std::mem::take(&mut self.0));
+        //self.0 = rhs.0.union(std::mem::take(&mut self.0));
+        println!(
+            "update, size of the rhs is {:?}, and size of the existing delta is {:?}",
+            rhs.0.len(),
+            self.0.len()
+        );
+        if self.0.is_empty() {
+            self.0 = rhs.0;
+            return;
+        }
+        let now = std::time::Instant::now();
+
+        // Merge the two page deltas, which are sorted by page index.
+        // In case the page index is the same, the page from the rhs will overwrite the page from the lhs.
+        // The result is a new page delta that contains all pages from both inputs, with the rhs pages taking precedence
+        // in case of equality, so |result| <= |lhs| + |rhs|.
+        // In principle, this looks like the merge operation in merge sort.
+        let mut new_delta = im::Vector::new();
+        let mut lhs_iter = self.0.iter();
+        let mut rhs_iter = rhs.0.iter();
+        let mut lhs = lhs_iter.next();
+        let mut rhs = rhs_iter.next();
+        while let (Some((lhs_idx, lhs_page)), Some((rhs_idx, rhs_page))) = (lhs, rhs) {
+            if lhs_idx < rhs_idx {
+                new_delta.push_back((*lhs_idx, lhs_page.clone()));
+                lhs = lhs_iter.next();
+            } else {
+                new_delta.push_back((*rhs_idx, rhs_page.clone()));
+                rhs = rhs_iter.next();
+                // If the page indices are the same, the rhs page will overwrite the lhs page,
+                // so we need to advance the lhs iterator.
+                if lhs_idx == rhs_idx {
+                    lhs = lhs_iter.next();
+                }
+            }
+        }
+        while let Some((idx, page)) = lhs {
+            new_delta.push_back((*idx, page.clone()));
+            lhs = lhs_iter.next();
+        }
+        while let Some((idx, page)) = rhs {
+            new_delta.push_back((*idx, page.clone()));
+            rhs = rhs_iter.next();
+        }
+
+        // let mut new_delta = self.0.clone();
+        // for (idx, page) in rhs.0 {
+        //     //println!("idx: {:?}", idx);
+        //     match new_delta.binary_search_by(|(i, _)| i.cmp(&idx)) {
+        //         Ok(i) => new_delta = new_delta.update(i, (idx, page)),
+        //         Err(i) => new_delta.insert(i, (idx, page)),
+        //     }
+        // }
+
+        println!("inserting pages  took {:?}", now.elapsed());
+
+        self.0 = new_delta;
+
+        println!("update end");
     }
 
     /// Enumerates all the pages in this delta.
     fn iter(&self) -> impl Iterator<Item = (PageIndex, &'_ Page)> {
-        self.0.iter().map(|(idx, page)| (PageIndex::new(idx), page))
+        //self.0.iter().map(|(idx, page)| (PageIndex::new(idx), page))
+        //println!("iter");
+        self.0.iter().map(|(idx, page)| (*idx, page))
     }
 
     /// Returns true if the page delta contains no pages.
     fn is_empty(&self) -> bool {
+        // self.0.is_empty()
+        //println!("is_empty");
         self.0.is_empty()
     }
 
     /// Returns the largest page index in the page delta.
     /// If the page delta is empty, then it returns `None`.
     fn max_page_index(&self) -> Option<PageIndex> {
-        self.0.max_key().map(PageIndex::from)
+        //self.0.max_key().map(PageIndex::from)
+        println!("max_page_index");
+        self.0.last().map(|(idx, _)| *idx)
     }
 
     /// Returns the number of pages in the page delta.
     fn len(&self) -> usize {
+        //  self.0.len()
+        println!("len");
         self.0.len()
     }
 }
@@ -223,7 +321,12 @@ where
     I: IntoIterator<Item = (PageIndex, Page)>,
 {
     fn from(delta: I) -> Self {
-        Self(delta.into_iter().map(|(i, p)| (i.get(), p)).collect())
+        // Self(delta.into_iter().map(|(i, p)| (i.get(), p)).collect())
+        println!("From::Iter");
+        let now = std::time::Instant::now();
+        let res = Self(delta.into_iter().collect());
+        println!("From::Iter took {:?}", now.elapsed());
+        res
     }
 }
 
@@ -566,9 +669,16 @@ impl PageMap {
     /// page allocator was created or not, which is used for synchronization
     /// with the sandbox process.
     pub fn update(&mut self, pages: &[(PageIndex, &PageBytes)]) -> Vec<PageIndex> {
+        let now = std::time::Instant::now();
         let page_delta = self.page_allocator.allocate(pages);
+        println!("allocate took {:?}", now.elapsed());
+        let now = std::time::Instant::now();
         self.apply(page_delta);
-        pages.iter().map(|(index, _)| *index).collect()
+        println!("apply took {:?}", now.elapsed());
+        let now = std::time::Instant::now();
+        let res = pages.iter().map(|(index, _)| *index).collect();
+        println!("collect took {:?}", now.elapsed());
+        res
     }
 
     /// Persists the heap delta contained in this page map to the specified
@@ -928,7 +1038,7 @@ impl PageMap {
         let mut last_applied_index: Option<PageIndex> = None;
         let num_host_pages = self.num_host_pages() as u64;
         for (index, _) in page_delta.iter() {
-            debug_assert!(self.page_delta.0.get(index.get()).is_some());
+            debug_assert!(self.page_delta.get_page(index).is_some());
             assert!(index < num_host_pages.into());
 
             if last_applied_index.is_some() && last_applied_index.unwrap() >= index {

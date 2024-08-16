@@ -166,6 +166,8 @@ impl PageAllocatorInner {
         page_allocator: &Arc<Self>,
         pages: &[(PageIndex, &PageBytes)],
     ) -> Vec<(PageIndex, Page)> {
+        let mut pages = pages.to_vec();
+        pages.sort_by_key(|(page_index, _)| *page_index);
         let mut guard = page_allocator.core_allocator.lock().unwrap();
         let allocator_creator = || {
             MmapBasedPageAllocatorCore::new(Arc::clone(page_allocator.fd_factory.as_ref().unwrap()))
@@ -194,6 +196,12 @@ impl PageAllocatorInner {
         page_allocator: &Arc<Self>,
         pages: &[(PageIndex, &PageBytes)],
     ) -> Vec<(PageIndex, Page)> {
+        // Sort the pages. This is important for the correctness of the algorithm.
+        // The persistent vector containing the page deltas needs to be sorted.
+
+        let mut pages = pages.to_vec();
+        pages.sort_by_key(|(page_index, _)| *page_index);
+
         let mut guard = page_allocator.core_allocator.lock().unwrap();
         let allocator_creator = || {
             MmapBasedPageAllocatorCore::new(Arc::clone(page_allocator.fd_factory.as_ref().unwrap()))
@@ -205,6 +213,7 @@ impl PageAllocatorInner {
         ALLOCATED_PAGES.inc_by(pages.len());
         core.allocated_pages += pages.len();
 
+        let now = std::time::Instant::now();
         // Collect page addresses to avoid locking and copying for every page.
         // This enables parallel copying of pages.
         let mut allocated_pages_vec: Vec<_> = pages
@@ -222,11 +231,15 @@ impl PageAllocatorInner {
                 allocated_page.copy_from_slice(0, delta_page.1);
             });
 
-        allocated_pages_vec
+        let res = allocated_pages_vec
             .into_iter()
             .zip(pages)
             .map(|(allocated_page, delta_page)| (delta_page.0, Page(Arc::new(allocated_page))))
-            .collect()
+            .collect();
+
+        println!("Time taken to allocate pages: {:?}", now.elapsed());
+
+        res
     }
 
     // See the comments of the corresponding method in `PageAllocator`.
@@ -632,8 +645,8 @@ impl MmapBasedPageAllocatorCore {
                     // We don't need to panic, madvise failing is not a problem, 
                     // it will only mean that we are not using huge pages.
                     println!(
-                    "MmapPageAllocator failed to madvise {} bytes at address {:?} for memory file #{}: {}",
-                    mmap_size, mmap_ptr, self.file_descriptor, err
+                    "MmapPageAllocator failed to madvise {} bytes at address {:?} for memory file #{}: {}, {}",
+                    mmap_size, mmap_ptr, self.file_descriptor, err, mmap_ptr as usize % HUGE_PAGE_SIZE
                     )
                 });
             }

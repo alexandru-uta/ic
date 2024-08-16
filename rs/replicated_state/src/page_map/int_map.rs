@@ -466,10 +466,12 @@ impl<T: Clone> std::iter::FromIterator<(u64, T)> for IntMap<T> {
     where
         I: IntoIterator<Item = (u64, T)>,
     {
+        let now = std::time::Instant::now();
         let mut m = Self::new();
         for (k, v) in iter {
             m = m.insert(k, v);
         }
+        println!("IntMap::from_iter took {:?}", now.elapsed());
         m
     }
 }

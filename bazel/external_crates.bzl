@@ -1511,6 +1511,12 @@ def external_crates_repository(name, cargo_lockfile, lockfile, sanitizers_enable
             "zstd": crate.spec(
                 version = "^0.13.1",
             ),
+            "im": crate.spec(
+                version = "^15.1.0",
+            ),
+            "rpds": crate.spec(
+                version = "^1.1.0",
+            ),
         },
         splicing_config = splicing_config(
             resolver_version = "2",

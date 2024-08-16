@@ -583,6 +583,8 @@ pub fn process(
     Option<WasmStateChanges>,
     Result<WasmtimeInstance, SystemApiImpl>,
 ) {
+    let now = std::time::Instant::now();
+
     let canister_id = sandbox_safe_system_state.canister_id();
     let modification_tracking = api_type.modification_tracking();
     let timestamp_nanos = api_type.time().as_nanos_since_unix_epoch();
@@ -724,6 +726,10 @@ pub fn process(
     let mut allocated_bytes = NumBytes::from(0);
     let mut allocated_message_bytes = NumBytes::from(0);
 
+    println!("execution took {:?}", now.elapsed());
+
+    let now = std::time::Instant::now();
+
     let wasm_state_changes = match run_result {
         Ok(run_result) => {
             match modification_tracking {
@@ -784,6 +790,8 @@ pub fn process(
             None
         }
     };
+
+    println!("memory copying and overhead took {:?}", now.elapsed());
 
     // If the dirty page optimization slicing has been performed, we know the dirty page copying
     // was a heavy operation, therefore we take into account its overhead in number of instructions

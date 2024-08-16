@@ -1,5 +1,5 @@
 {
-  "checksum": "b7da15d63b05c6cdf9d3fe92193a092bd96edc55d5524c91231d335c83a905a2",
+  "checksum": "9fcca408f298bff735978737a3767ba1a956e5a275873db46e6ac85edf1b6c33",
   "crates": {
     "abnf 0.12.0": {
       "name": "abnf",
@@ -2447,6 +2447,59 @@
         "MIT"
       ],
       "license_file": "LICENSE-APACHE"
+    },
+    "archery 1.2.1": {
+      "name": "archery",
+      "version": "1.2.1",
+      "package_url": "https://github.com/orium/archery",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/archery/1.2.1/download",
+          "sha256": "eae2ed21cd55021f05707a807a5fc85695dafb98832921f6cfa06db67ca5b869"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "archery",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": false,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "archery",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "crate_features": {
+          "common": [
+            "triomphe"
+          ],
+          "selects": {}
+        },
+        "deps": {
+          "common": [
+            {
+              "id": "triomphe 0.1.13",
+              "target": "triomphe"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2021",
+        "version": "1.2.1"
+      },
+      "license": "MPL-2.0",
+      "license_ids": [
+        "MPL-2.0"
+      ],
+      "license_file": "LICENSE.md"
     },
     "arrayvec 0.5.2": {
       "name": "arrayvec",
@@ -7346,6 +7399,60 @@
         "MIT"
       ],
       "license_file": "LICENSE-APACHE"
+    },
+    "bitmaps 2.1.0": {
+      "name": "bitmaps",
+      "version": "2.1.0",
+      "package_url": "https://github.com/bodil/bitmaps",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/bitmaps/2.1.0/download",
+          "sha256": "031043d04099746d8db04daf1fa424b2bc8bd69d92b25962dcde24da39ab64a2"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "bitmaps",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": false,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "bitmaps",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "crate_features": {
+          "common": [
+            "default",
+            "std"
+          ],
+          "selects": {}
+        },
+        "deps": {
+          "common": [
+            {
+              "id": "typenum 1.16.0",
+              "target": "typenum"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "2.1.0"
+      },
+      "license": "MPL-2.0+",
+      "license_ids": [
+        "MPL-2.0"
+      ],
+      "license_file": null
     },
     "bitvec 1.0.1": {
       "name": "bitvec",
@@ -17491,6 +17598,10 @@
               "target": "idna"
             },
             {
+              "id": "im 15.1.0",
+              "target": "im"
+            },
+            {
               "id": "indexmap 2.2.6",
               "target": "indexmap"
             },
@@ -17860,6 +17971,10 @@
             {
               "id": "rolling-file 0.2.0",
               "target": "rolling_file"
+            },
+            {
+              "id": "rpds 1.1.0",
+              "target": "rpds"
             },
             {
               "id": "rsa 0.9.2",
@@ -31178,6 +31293,99 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
+    "im 15.1.0": {
+      "name": "im",
+      "version": "15.1.0",
+      "package_url": "https://github.com/bodil/im-rs",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/im/15.1.0/download",
+          "sha256": "d0acd33ff0285af998aaf9b57342af478078f53492322fafc47450e09397e0e9"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "im",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": false,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        },
+        {
+          "BuildScript": {
+            "crate_name": "build_script_build",
+            "crate_root": "build.rs",
+            "srcs": {
+              "allow_empty": false,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "im",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "bitmaps 2.1.0",
+              "target": "bitmaps"
+            },
+            {
+              "id": "im 15.1.0",
+              "target": "build_script_build"
+            },
+            {
+              "id": "rand_core 0.6.4",
+              "target": "rand_core"
+            },
+            {
+              "id": "rand_xoshiro 0.6.0",
+              "target": "rand_xoshiro"
+            },
+            {
+              "id": "sized-chunks 0.6.5",
+              "target": "sized_chunks"
+            },
+            {
+              "id": "typenum 1.16.0",
+              "target": "typenum"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "15.1.0"
+      },
+      "build_script_attrs": {
+        "data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "version_check 0.9.4",
+              "target": "version_check"
+            }
+          ],
+          "selects": {}
+        }
+      },
+      "license": "MPL-2.0+",
+      "license_ids": [
+        "MPL-2.0"
+      ],
+      "license_file": null
+    },
     "impl-codec 0.6.0": {
       "name": "impl-codec",
       "version": "0.6.0",
@@ -38781,7 +38989,7 @@
               "target": "thiserror"
             },
             {
-              "id": "triomphe 0.1.9",
+              "id": "triomphe 0.1.13",
               "target": "triomphe"
             },
             {
@@ -50501,6 +50709,54 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
+    "rand_xoshiro 0.6.0": {
+      "name": "rand_xoshiro",
+      "version": "0.6.0",
+      "package_url": "https://github.com/rust-random/rngs",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/rand_xoshiro/0.6.0/download",
+          "sha256": "6f97cdb2a36ed4183de61b2f824cc45c9f1037f28afe0a322e9fff4c108b5aaa"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "rand_xoshiro",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": false,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "rand_xoshiro",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "rand_core 0.6.4",
+              "target": "rand_core"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "0.6.0"
+      },
+      "license": "MIT OR Apache-2.0",
+      "license_ids": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "license_file": "LICENSE-APACHE"
+    },
     "randomkit 0.1.1": {
       "name": "randomkit",
       "version": "0.1.1",
@@ -53233,6 +53489,60 @@
         "MIT"
       ],
       "license_file": "LICENSE"
+    },
+    "rpds 1.1.0": {
+      "name": "rpds",
+      "version": "1.1.0",
+      "package_url": "https://github.com/orium/rpds",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/rpds/1.1.0/download",
+          "sha256": "a0e15515d3ce3313324d842629ea4905c25a13f81953eadb88f85516f59290a4"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "rpds",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": false,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "rpds",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "crate_features": {
+          "common": [
+            "default",
+            "std"
+          ],
+          "selects": {}
+        },
+        "deps": {
+          "common": [
+            {
+              "id": "archery 1.2.1",
+              "target": "archery"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2021",
+        "version": "1.1.0"
+      },
+      "license": "MPL-2.0",
+      "license_ids": [
+        "MPL-2.0"
+      ],
+      "license_file": "LICENSE.md"
     },
     "rsa 0.9.2": {
       "name": "rsa",
@@ -59882,6 +60192,64 @@
       "license_ids": [
         "Apache-2.0",
         "MIT"
+      ],
+      "license_file": null
+    },
+    "sized-chunks 0.6.5": {
+      "name": "sized-chunks",
+      "version": "0.6.5",
+      "package_url": "https://github.com/bodil/sized-chunks",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/sized-chunks/0.6.5/download",
+          "sha256": "16d69225bde7a69b235da73377861095455d298f2b970996eec25ddbb42b3d1e"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "sized_chunks",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": false,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "sized_chunks",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "crate_features": {
+          "common": [
+            "default",
+            "std"
+          ],
+          "selects": {}
+        },
+        "deps": {
+          "common": [
+            {
+              "id": "bitmaps 2.1.0",
+              "target": "bitmaps"
+            },
+            {
+              "id": "typenum 1.16.0",
+              "target": "typenum"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "0.6.5"
+      },
+      "license": "MPL-2.0+",
+      "license_ids": [
+        "MPL-2.0"
       ],
       "license_file": null
     },
@@ -67847,14 +68215,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "triomphe 0.1.9": {
+    "triomphe 0.1.13": {
       "name": "triomphe",
-      "version": "0.1.9",
+      "version": "0.1.13",
       "package_url": "https://github.com/Manishearth/triomphe",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/triomphe/0.1.9/download",
-          "sha256": "0eee8098afad3fb0c54a9007aab6804558410503ad676d4633f9c2559a00ac0f"
+          "url": "https://static.crates.io/crates/triomphe/0.1.13/download",
+          "sha256": "e6631e42e10b40c0690bf92f404ebcfe6e1fdb480391d15f17cc8e96eeed5369"
         }
       },
       "targets": [
@@ -67877,7 +68245,7 @@
           "**"
         ],
         "edition": "2015",
-        "version": "0.1.9"
+        "version": "0.1.13"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -78836,6 +79204,7 @@
     "icrc1-test-env 0.1.1",
     "icrc1-test-suite 0.1.1",
     "idna 1.0.2",
+    "im 15.1.0",
     "indexmap 2.2.6",
     "indicatif 0.17.5",
     "indoc 1.0.9",
@@ -78932,6 +79301,7 @@
     "rlp 0.5.2",
     "rocksdb 0.22.0",
     "rolling-file 0.2.0",
+    "rpds 1.1.0",
     "rsa 0.9.2",
     "rstack-self 0.3.0",
     "rstest 0.19.0",
