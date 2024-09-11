@@ -235,53 +235,53 @@ impl PageDelta {
             self.0 = rhs.0;
             return;
         }
-        let now = std::time::Instant::now();
+        // let now = std::time::Instant::now();
 
-        // Merge the two page deltas, which are sorted by page index.
-        // In case the page index is the same, the page from the rhs will overwrite the page from the lhs.
-        // The result is a new page delta that contains all pages from both inputs, with the rhs pages taking precedence
-        // in case of equality, so |result| <= |lhs| + |rhs|.
-        // In principle, this looks like the merge operation in merge sort.
-        let mut new_delta = im::Vector::new();
-        let mut lhs_iter = self.0.iter();
-        let mut rhs_iter = rhs.0.iter();
-        let mut lhs = lhs_iter.next();
-        let mut rhs = rhs_iter.next();
-        while let (Some((lhs_idx, lhs_page)), Some((rhs_idx, rhs_page))) = (lhs, rhs) {
-            if lhs_idx < rhs_idx {
-                new_delta.push_back((*lhs_idx, lhs_page.clone()));
-                lhs = lhs_iter.next();
-            } else {
-                new_delta.push_back((*rhs_idx, rhs_page.clone()));
-                rhs = rhs_iter.next();
-                // If the page indices are the same, the rhs page will overwrite the lhs page,
-                // so we need to advance the lhs iterator.
-                if lhs_idx == rhs_idx {
-                    lhs = lhs_iter.next();
-                }
-            }
-        }
-        while let Some((idx, page)) = lhs {
-            new_delta.push_back((*idx, page.clone()));
-            lhs = lhs_iter.next();
-        }
-        while let Some((idx, page)) = rhs {
-            new_delta.push_back((*idx, page.clone()));
-            rhs = rhs_iter.next();
-        }
-
-        // let mut new_delta = self.0.clone();
-        // for (idx, page) in rhs.0 {
-        //     //println!("idx: {:?}", idx);
-        //     match new_delta.binary_search_by(|(i, _)| i.cmp(&idx)) {
-        //         Ok(i) => new_delta = new_delta.update(i, (idx, page)),
-        //         Err(i) => new_delta.insert(i, (idx, page)),
+        // // Merge the two page deltas, which are sorted by page index.
+        // // In case the page index is the same, the page from the rhs will overwrite the page from the lhs.
+        // // The result is a new page delta that contains all pages from both inputs, with the rhs pages taking precedence
+        // // in case of equality, so |result| <= |lhs| + |rhs|.
+        // // In principle, this looks like the merge operation in merge sort.
+        // let mut new_delta = im::Vector::new();
+        // let mut lhs_iter = self.0.iter();
+        // let mut rhs_iter = rhs.0.iter();
+        // let mut lhs = lhs_iter.next();
+        // let mut rhs = rhs_iter.next();
+        // while let (Some((lhs_idx, lhs_page)), Some((rhs_idx, rhs_page))) = (lhs, rhs) {
+        //     if lhs_idx < rhs_idx {
+        //         new_delta.push_back((*lhs_idx, lhs_page.clone()));
+        //         lhs = lhs_iter.next();
+        //     } else {
+        //         new_delta.push_back((*rhs_idx, rhs_page.clone()));
+        //         rhs = rhs_iter.next();
+        //         // If the page indices are the same, the rhs page will overwrite the lhs page,
+        //         // so we need to advance the lhs iterator.
+        //         if lhs_idx == rhs_idx {
+        //             lhs = lhs_iter.next();
+        //         }
         //     }
         // }
+        // while let Some((idx, page)) = lhs {
+        //     new_delta.push_back((*idx, page.clone()));
+        //     lhs = lhs_iter.next();
+        // }
+        // while let Some((idx, page)) = rhs {
+        //     new_delta.push_back((*idx, page.clone()));
+        //     rhs = rhs_iter.next();
+        // }
 
-        println!("inserting pages  took {:?}", now.elapsed());
-
+        let now = std::time::Instant::now();
+        let new_delta = if self.0.len().abs_diff(rhs.0.len()) < 100 {
+            merge_deltas(self.0.clone(), rhs.0.clone())
+        } else {
+            if self.0.len() < rhs.0.len() {
+                insert_small_delta_in_large_delta(self.0.clone(), rhs.0.clone())
+            } else {
+                insert_small_delta_in_large_delta(rhs.0.clone(), self.0.clone())
+            }
+        };
         self.0 = new_delta;
+        println!("update took {:?}", now.elapsed());
 
         println!("update end");
     }
@@ -304,7 +304,7 @@ impl PageDelta {
     /// If the page delta is empty, then it returns `None`.
     fn max_page_index(&self) -> Option<PageIndex> {
         //self.0.max_key().map(PageIndex::from)
-        println!("max_page_index");
+        //println!("max_page_index");
         self.0.last().map(|(idx, _)| *idx)
     }
 
@@ -328,6 +328,60 @@ where
         println!("From::Iter took {:?}", now.elapsed());
         res
     }
+}
+
+fn insert_small_delta_in_large_delta(
+    small_delta: im::Vector<(PageIndex, Page)>,
+    large_delta: im::Vector<(PageIndex, Page)>,
+) -> im::Vector<(PageIndex, Page)> {
+    //println!("insert_small_delta_in_large_delta");
+    let now = std::time::Instant::now();
+    let mut result = large_delta.clone();
+    for (idx, page) in small_delta {
+        match result.binary_search_by(|(i, _)| i.cmp(&idx)) {
+            Ok(i) => result = result.update(i, (idx, page)),
+            Err(i) => result.insert(i, (idx, page)),
+        }
+    }
+    println!("inserting pages  took {:?}", now.elapsed());
+    result
+}
+
+fn merge_deltas(
+    lhs: im::Vector<(PageIndex, Page)>,
+    rhs: im::Vector<(PageIndex, Page)>,
+) -> im::Vector<(PageIndex, Page)> {
+    println!("merge_deltas");
+    let now = std::time::Instant::now();
+    let mut result = im::Vector::new();
+    let mut lhs_iter = lhs.iter();
+    let mut rhs_iter = rhs.iter();
+    let mut lhs = lhs_iter.next();
+    let mut rhs = rhs_iter.next();
+    while let (Some((lhs_idx, lhs_page)), Some((rhs_idx, rhs_page))) = (lhs, rhs) {
+        if lhs_idx < rhs_idx {
+            result.push_back((*lhs_idx, lhs_page.clone()));
+            lhs = lhs_iter.next();
+        } else {
+            result.push_back((*rhs_idx, rhs_page.clone()));
+            rhs = rhs_iter.next();
+            // If the page indices are the same, the rhs page will overwrite the lhs page,
+            // so we need to advance the lhs iterator.
+            if lhs_idx == rhs_idx {
+                //lhs = lhs_iter.next();
+            }
+        }
+    }
+    while let Some((idx, page)) = lhs {
+        result.push_back((*idx, page.clone()));
+        lhs = lhs_iter.next();
+    }
+    while let Some((idx, page)) = rhs {
+        result.push_back((*idx, page.clone()));
+        rhs = rhs_iter.next();
+    }
+    println!("merging pages  took {:?}", now.elapsed());
+    result.clone()
 }
 
 /// Errors that can happen when one saves or loads a PageMap.
